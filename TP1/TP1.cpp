@@ -40,15 +40,15 @@ glm::vec3 camera_up    = glm::vec3(0.0f, 1.0f,  0.0f);
 float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
 
+int sommets = 16;
+const int MIN_SOMMETS = 4;
+const int MAX_SOMMETS = 248;
+bool scaleT = false;
+
 //rotation
 float angle = 0.;
 float zoom = 1.;
 /*******************************************************************************/
-
-// TEST
-
-// int HMwidth, HMheight, HMnrChannels;
-// unsigned char *HMdata;
 
 GLuint loadTexture(const char* filename) {
     GLuint textureID;
@@ -57,10 +57,6 @@ GLuint loadTexture(const char* filename) {
     int width, height, nrChannels;
     unsigned char *data = stbi_load(filename, &width, &height, &nrChannels, 0);
     if (data) {
-        // HMwidth = width;
-        // HMheight = height;
-        // HMnrChannels = nrChannels;
-        // HMdata = data;
         glBindTexture(GL_TEXTURE_2D, textureID);
 
         GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
@@ -78,6 +74,57 @@ GLuint loadTexture(const char* filename) {
     stbi_image_free(data);
     return textureID;
 }
+
+void scaleTerrain(std::vector<glm::vec3> &plan,std::vector<glm::vec2> &uvs,std::vector<unsigned short> &indices_plan,
+    GLuint &vertexbuffer_plan,GLuint &uvbuffer,GLuint &elementbuffer_plan, int sommets
+) {
+    plan.clear();
+    uvs.clear();
+    indices_plan.clear();
+
+    float taille = 10.0f;
+    float m = taille / 2.0f;
+    float pas = taille / (float)sommets;
+
+    for (int i = 0; i <= sommets; i++) {
+        for (int j = 0; j <= sommets; j++) {
+            float x = -m + j * pas;
+            float z = -m + i * pas;
+            plan.emplace_back(glm::vec3(x,0.0f, z));
+
+            float u = (float)j / (float)(sommets - 1);
+            float v = (float)i / (float)(sommets - 1);
+            uvs.emplace_back(glm::vec2(u, v));
+        }
+    }
+
+    for (int i = 0; i < sommets-1; i++) {
+        for (int j = 0; j < sommets-1; j++) {
+            int topleft = i * (sommets + 1) + j;
+            int topright = topleft + 1;
+            int bottomleft = (i + 1) * (sommets + 1) + j;
+            int bottomright = bottomleft + 1;
+
+            indices_plan.push_back(topleft);
+            indices_plan.push_back(bottomleft);
+            indices_plan.push_back(topright);
+
+            indices_plan.push_back(topright);
+            indices_plan.push_back(bottomleft);
+            indices_plan.push_back(bottomright);
+        }
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer_plan);
+    glBufferData(GL_ARRAY_BUFFER, plan.size() * sizeof(glm::vec3), &plan[0], GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+    glBufferData(GL_ARRAY_BUFFER, uvs.size() * sizeof(glm::vec2), &uvs[0], GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer_plan);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_plan.size() * sizeof(unsigned short), &indices_plan[0] , GL_STATIC_DRAW);
+}
+
 
 int main( void )
 {
@@ -177,11 +224,14 @@ int main( void )
     GLuint heightmapID = glGetUniformLocation(programID, "heightmap");
     glUniform1i(heightmapID, 3);
 
+    GLuint heightScaleID = glGetUniformLocation(programID,"heightScale");
+    glUniform1f(heightScaleID,1.0f);
+
     std::vector<glm::vec3> plan;
     std::vector<glm::vec2> uvs;
     std::vector<unsigned short> indices_plan;
 
-    int sommets = 16;
+    // int sommets = 16;
     float taille = 10.0f;
     float m = taille / 2.0f;
     float pas = taille / (float)sommets;
@@ -191,12 +241,6 @@ int main( void )
             float x = -m + j * pas;
             float z = -m + i * pas;
 
-            // int tex_x = (j * HMwidth) / sommets;
-            // int tex_y = (i * HMheight) / sommets;
-
-            // float altitude = HMdata[tex_y * HMwidth + tex_x] / 255.0f * 10.0f;
-        
-
             plan.emplace_back(glm::vec3(x,0.0f, z));
 
             float u = (float)j / (float)(sommets - 1);
@@ -205,7 +249,6 @@ int main( void )
             uvs.emplace_back(glm::vec2(u, v));
         }
     }
-    // stbi_image_free(altitude_data);
 
     for (int i = 0; i < sommets-1; i++) {
         for (int j = 0; j < sommets-1; j++) {
@@ -213,15 +256,6 @@ int main( void )
             int topright = topleft + 1;
             int bottomleft = (i + 1) * (sommets + 1) + j;
             int bottomright = bottomleft + 1;
-
-            // float altitude1 = plan[topleft].y;
-            // float altitude2 = plan[topright].y;
-            // float altitude3 = plan[bottomleft].y;
-            // float altitude4 = plan[bottomright].y;
-
-            // float averageAltitude = (altitude1 + altitude2 + altitude3 + altitude4) / 4.0f;
-            // std::cout << "Alt moy : " << averageAltitude << std::endl;
-
 
             indices_plan.push_back(topleft);
             indices_plan.push_back(bottomleft);
@@ -263,7 +297,11 @@ int main( void )
         // input
         // -----
         processInput(window);
-
+        if (scaleT) {
+            // std::cout << "Scaling..." << std::endl;
+            scaleTerrain(plan,uvs,indices_plan,vertexbuffer_plan,uvbuffer,elementbuffer_plan,sommets);
+            scaleT = false;
+        }
 
         // Clear the screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -345,6 +383,17 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window,GLFW_KEY_S) == GLFW_PRESS)
         camera_position += cameraSpeed * camera_up;
 
+
+    if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS && sommets <= MAX_SOMMETS) {
+        // std::cout << "Dimension ++ | sommets = " << sommets << std::endl;
+        sommets += 2;
+        scaleT = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS && sommets > MIN_SOMMETS) {
+        // std::cout << "Dimension -- | sommets = " << sommets << std::endl;
+        sommets -= 2;
+        scaleT = true;
+    }
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes

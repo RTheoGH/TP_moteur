@@ -45,64 +45,10 @@ float angle = 0.;
 float zoom = 1.;
 /*******************************************************************************/
 
-void surface_plane(std::vector<glm::vec3> &vertices, std::vector<glm::vec2> &uvs, std::vector<unsigned short> &indices, int sommets = 16) {
-    float taille = 10.0f;
-    float m = taille / 2.0f;
-    float pas = taille / sommets;
+// TEST
 
-    for (int i = 0; i <= sommets; i++) {
-        for (int j = 0; j <= sommets; j++) {
-            float x = -m + j * pas;
-            float z = -m + i * pas;
-
-            vertices.emplace_back(glm::vec3(x, 0.0f, z));
-
-            float u = (float)j / sommets;
-            float v = (float)i / sommets;
-
-            uvs.emplace_back(glm::vec2(u, v));
-        }
-    }
-
-    for (int i = 0; i < sommets; i++) {
-        for (int j = 0; j < sommets; j++) {
-            int topleft = i * (sommets + 1) + j;
-            int topright = topleft + 1;
-            int bottomleft = (i + 1) * (sommets + 1) + j;
-            int bottomright = bottomleft + 1;
-
-            indices.push_back(topleft);
-            indices.push_back(bottomleft);
-            indices.push_back(topright);
-
-            indices.push_back(topright);
-            indices.push_back(bottomleft);
-            indices.push_back(bottomright);
-        }
-    }
-}
-
-
-void dessin_plan(GLuint programID, GLuint &vertexbuffer, GLuint &uvbuffer, GLuint &elementbuffer,
-                 const std::vector<glm::vec3> &vertices, const std::vector<glm::vec2> &uvs, const std::vector<unsigned short> &indices) {
-
-    glUseProgram(programID);
-
-    glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-    glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
-    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_SHORT, (void*)0);
-
-    glDisableVertexAttribArray(0);
-    glDisableVertexAttribArray(1);
-}
-
+// int HMwidth, HMheight, HMnrChannels;
+// unsigned char *HMdata;
 
 GLuint loadTexture(const char* filename) {
     GLuint textureID;
@@ -111,8 +57,14 @@ GLuint loadTexture(const char* filename) {
     int width, height, nrChannels;
     unsigned char *data = stbi_load(filename, &width, &height, &nrChannels, 0);
     if (data) {
+        // HMwidth = width;
+        // HMheight = height;
+        // HMnrChannels = nrChannels;
+        // HMdata = data;
         glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+        GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
 
         // Paramètres de texture
@@ -191,41 +143,97 @@ int main( void )
 
     /*****************TODO***********************/
     // Get a handle for our "Model View Projection" matrices uniforms
+    GLuint MatrixID = glGetUniformLocation(programID,"MVP");
+    glm::mat4 MVP;
 
     /****************************************/
-    std::vector<unsigned short> indices; //Triangles concaténés dans une liste
-    std::vector<std::vector<unsigned short> > triangles;
-    std::vector<glm::vec3> indexed_vertices;
-
-    //Chargement du fichier de maillage
-    // std::string filename("chair.off");
-    // loadOFF(filename, indexed_vertices, indices, triangles );
-
-    // Load it into a VBO
-
-    GLuint vertexbuffer;
-    glGenBuffers(1, &vertexbuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-    glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(glm::vec3), &indexed_vertices[0], GL_STATIC_DRAW);
-
-    // Generate a buffer for the indices as well
-    GLuint elementbuffer;
-    glGenBuffers(1, &elementbuffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &indices[0] , GL_STATIC_DRAW);
 
     // Get a handle for our "LightPosition" uniform
     glUseProgram(programID);
     GLuint LightID = glGetUniformLocation(programID, "LightPosition_worldspace");
 
+    glActiveTexture(GL_TEXTURE0);
+    GLuint grassTexture = loadTexture("grass.png");
+    glBindTexture(GL_TEXTURE_2D, grassTexture);
+    GLuint grassTextureID = glGetUniformLocation(programID, "myTextureSamplerGRASS");
+    glUniform1i(grassTextureID, 0);
+    
+
+    glActiveTexture(GL_TEXTURE1);
+    GLuint rockTexture = loadTexture("rock.png");
+    glBindTexture(GL_TEXTURE_2D, rockTexture);
+    GLuint rockTextureID = glGetUniformLocation(programID, "myTextureSamplerROCK");
+    glUniform1i(rockTextureID, 1);
+
+    glActiveTexture(GL_TEXTURE2);
+    GLuint snowTexture = loadTexture("snowrocks.png");
+    glBindTexture(GL_TEXTURE_2D, snowTexture);
+    GLuint snowTextureID = glGetUniformLocation(programID, "myTextureSamplerSNOW");
+    glUniform1i(snowTextureID, 2);
+
+    glActiveTexture(GL_TEXTURE3);
+    GLuint heightmapTexture = loadTexture("heightmap-1024x1024.png");
+    glBindTexture(GL_TEXTURE_2D, heightmapTexture);
+    GLuint heightmapID = glGetUniformLocation(programID, "heightmap");
+    glUniform1i(heightmapID, 3);
 
     std::vector<glm::vec3> plan;
     std::vector<glm::vec2> uvs;
     std::vector<unsigned short> indices_plan;
 
+    int sommets = 16;
+    float taille = 10.0f;
+    float m = taille / 2.0f;
+    float pas = taille / (float)sommets;
+
+    for (int i = 0; i <= sommets; i++) {
+        for (int j = 0; j <= sommets; j++) {
+            float x = -m + j * pas;
+            float z = -m + i * pas;
+
+            // int tex_x = (j * HMwidth) / sommets;
+            // int tex_y = (i * HMheight) / sommets;
+
+            // float altitude = HMdata[tex_y * HMwidth + tex_x] / 255.0f * 10.0f;
+        
+
+            plan.emplace_back(glm::vec3(x,0.0f, z));
+
+            float u = (float)j / (float)(sommets - 1);
+            float v = (float)i / (float)(sommets - 1);
+
+            uvs.emplace_back(glm::vec2(u, v));
+        }
+    }
+    // stbi_image_free(altitude_data);
+
+    for (int i = 0; i < sommets-1; i++) {
+        for (int j = 0; j < sommets-1; j++) {
+            int topleft = i * (sommets + 1) + j;
+            int topright = topleft + 1;
+            int bottomleft = (i + 1) * (sommets + 1) + j;
+            int bottomright = bottomleft + 1;
+
+            // float altitude1 = plan[topleft].y;
+            // float altitude2 = plan[topright].y;
+            // float altitude3 = plan[bottomleft].y;
+            // float altitude4 = plan[bottomright].y;
+
+            // float averageAltitude = (altitude1 + altitude2 + altitude3 + altitude4) / 4.0f;
+            // std::cout << "Alt moy : " << averageAltitude << std::endl;
+
+
+            indices_plan.push_back(topleft);
+            indices_plan.push_back(bottomleft);
+            indices_plan.push_back(topright);
+
+            indices_plan.push_back(topright);
+            indices_plan.push_back(bottomleft);
+            indices_plan.push_back(bottomright);
+        }
+    }
+
     GLuint vertexbuffer_plan,uvbuffer,elementbuffer_plan;
-    
-    surface_plane(plan,uvs,indices_plan);
     
     glGenBuffers(1, &vertexbuffer_plan);
     glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer_plan);
@@ -238,12 +246,6 @@ int main( void )
     glGenBuffers(1, &elementbuffer_plan);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer_plan);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_plan.size() * sizeof(unsigned short), &indices_plan[0] , GL_STATIC_DRAW);
-
-    GLuint grassTexture = loadTexture("grass.png");
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, grassTexture);
-    GLuint TextureID = glGetUniformLocation(programID, "myTextureSampler");
-    glUniform1i(TextureID, 0); // Texture unit 0
 
     // For speed computation
     double lastTime = glfwGetTime();
@@ -279,39 +281,23 @@ int main( void )
         glm::mat4 ProjectionMatrix = glm::perspective(glm::radians(45.0f),(float)SCR_WIDTH / (float)SCR_HEIGHT,0.1f,100.0f);
         // Send our transformation to the currently bound shader,
         // in the "Model View Projection" to the shader uniforms
-        glm::mat4 MVP = ProjectionMatrix*ViewMatrix*ModelMatrix;
+        MVP = ProjectionMatrix*ViewMatrix*ModelMatrix;
+        glUniformMatrix4fv(MatrixID,1,GL_FALSE,&MVP[0][0]);
         /****************************************/
 
-        GLuint MatrixID = glGetUniformLocation(programID,"MVP");
-        glUniformMatrix4fv(MatrixID,1,GL_FALSE,&MVP[0][0]);
-
-        dessin_plan(programID,uvbuffer,vertexbuffer_plan,elementbuffer_plan,plan,uvs,indices_plan);
-        
-
-        // 1rst attribute buffer : vertices
         glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-        glVertexAttribPointer(
-                    0,                  // attribute
-                    3,                  // size
-                    GL_FLOAT,           // type
-                    GL_FALSE,           // normalized?
-                    0,                  // stride
-                    (void*)0            // array buffer offset
-                    );
+        glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer_plan);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-        // Index buffer
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
+        glEnableVertexAttribArray(1);
+        glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-        // Draw the triangles !
-        glDrawElements(
-                    GL_TRIANGLES,      // mode
-                    indices.size(),    // count
-                    GL_UNSIGNED_SHORT,   // type
-                    (void*)0           // element array buffer offset
-                    );
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer_plan);
+        glDrawElements(GL_TRIANGLES, indices_plan.size(), GL_UNSIGNED_SHORT, (void*)0);
 
         glDisableVertexAttribArray(0);
+        glDisableVertexAttribArray(1);
 
         // Swap buffers
         glfwSwapBuffers(window);
@@ -322,8 +308,6 @@ int main( void )
            glfwWindowShouldClose(window) == 0 );
 
     // Cleanup VBO and shader
-    glDeleteBuffers(1, &vertexbuffer);
-    glDeleteBuffers(1, &elementbuffer);
     glDeleteBuffers(1, &vertexbuffer_plan);
     glDeleteBuffers(1, &elementbuffer_plan);
     glDeleteBuffers(1, &uvbuffer);
@@ -353,11 +337,11 @@ void processInput(GLFWwindow *window)
 
     //TODO add translations
     if (glfwGetKey(window,GLFW_KEY_A) == GLFW_PRESS)
-        camera_position += glm::normalize(glm::cross(camera_target,camera_up))*cameraSpeed;
+        camera_position -= glm::normalize(glm::cross(camera_target,camera_up))*cameraSpeed;
     if (glfwGetKey(window,GLFW_KEY_W) == GLFW_PRESS)
         camera_position -= cameraSpeed * camera_up;
     if (glfwGetKey(window,GLFW_KEY_D) == GLFW_PRESS)
-        camera_position -= glm::normalize(glm::cross(camera_target,camera_up))*cameraSpeed;
+        camera_position += glm::normalize(glm::cross(camera_target,camera_up))*cameraSpeed;
     if (glfwGetKey(window,GLFW_KEY_S) == GLFW_PRESS)
         camera_position += cameraSpeed * camera_up;
 

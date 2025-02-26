@@ -32,9 +32,11 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 // camera
-glm::vec3 camera_position   = glm::vec3(0.0f, 0.0f,  3.0f);
+glm::vec3 camera_position   = glm::vec3(0.0f, 1.0f, 7.0f);
 glm::vec3 camera_target = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 camera_up    = glm::vec3(0.0f, 1.0f,  0.0f);
+
+glm::vec3 orbital_camera_position = glm::vec3(0.0f, 10.0f, 10.0f);
 
 // timing
 float deltaTime = 0.0f;	// time between current frame and last frame
@@ -47,7 +49,11 @@ bool scaleT = false;
 
 //rotation
 float angle = 0.;
+float angle_perspective = 45.;
 float zoom = 1.;
+bool orbital = false;
+float rotation_speed = 0.5f;
+
 /*******************************************************************************/
 
 GLuint loadTexture(const char* filename) {
@@ -75,9 +81,7 @@ GLuint loadTexture(const char* filename) {
     return textureID;
 }
 
-void scaleTerrain(std::vector<glm::vec3> &plan,std::vector<glm::vec2> &uvs,std::vector<unsigned short> &indices_plan,
-    GLuint &vertexbuffer_plan,GLuint &uvbuffer,GLuint &elementbuffer_plan, int sommets
-) {
+void scaleTerrain(std::vector<glm::vec3> &plan,std::vector<glm::vec2> &uvs,std::vector<unsigned short> &indices_plan,GLuint &vertexbuffer_plan,GLuint &uvbuffer,GLuint &elementbuffer_plan, int sommets) {
     plan.clear();
     uvs.clear();
     indices_plan.clear();
@@ -125,9 +129,7 @@ void scaleTerrain(std::vector<glm::vec3> &plan,std::vector<glm::vec2> &uvs,std::
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_plan.size() * sizeof(unsigned short), &indices_plan[0] , GL_STATIC_DRAW);
 }
 
-
-int main( void )
-{
+int main( void ){
     // Initialise GLFW
     if( !glfwInit() )
     {
@@ -199,74 +201,76 @@ int main( void )
     glUseProgram(programID);
     GLuint LightID = glGetUniformLocation(programID, "LightPosition_worldspace");
 
-    glActiveTexture(GL_TEXTURE0);
-    GLuint grassTexture = loadTexture("grass.png");
-    glBindTexture(GL_TEXTURE_2D, grassTexture);
-    GLuint grassTextureID = glGetUniformLocation(programID, "myTextureSamplerGRASS");
-    glUniform1i(grassTextureID, 0);
+    { // Textures
+        glActiveTexture(GL_TEXTURE0);
+        GLuint grassTexture = loadTexture("grass.png");
+        glBindTexture(GL_TEXTURE_2D, grassTexture);
+        GLuint grassTextureID = glGetUniformLocation(programID, "myTextureSamplerGRASS");
+        glUniform1i(grassTextureID, 0);
+        
+        glActiveTexture(GL_TEXTURE1);
+        GLuint rockTexture = loadTexture("rock.png");
+        glBindTexture(GL_TEXTURE_2D, rockTexture);
+        GLuint rockTextureID = glGetUniformLocation(programID, "myTextureSamplerROCK");
+        glUniform1i(rockTextureID, 1);
+
+        glActiveTexture(GL_TEXTURE2);
+        GLuint snowTexture = loadTexture("snowrocks.png");
+        glBindTexture(GL_TEXTURE_2D, snowTexture);
+        GLuint snowTextureID = glGetUniformLocation(programID, "myTextureSamplerSNOW");
+        glUniform1i(snowTextureID, 2);
+
+        glActiveTexture(GL_TEXTURE3);
+        GLuint heightmapTexture = loadTexture("heightmap-1024x1024.png");
+        glBindTexture(GL_TEXTURE_2D, heightmapTexture);
+        GLuint heightmapID = glGetUniformLocation(programID, "heightmap");
+        glUniform1i(heightmapID, 3);
+
+        GLuint heightScaleID = glGetUniformLocation(programID,"heightScale");
+        glUniform1f(heightScaleID,1.0f);
+    }
     
-
-    glActiveTexture(GL_TEXTURE1);
-    GLuint rockTexture = loadTexture("rock.png");
-    glBindTexture(GL_TEXTURE_2D, rockTexture);
-    GLuint rockTextureID = glGetUniformLocation(programID, "myTextureSamplerROCK");
-    glUniform1i(rockTextureID, 1);
-
-    glActiveTexture(GL_TEXTURE2);
-    GLuint snowTexture = loadTexture("snowrocks.png");
-    glBindTexture(GL_TEXTURE_2D, snowTexture);
-    GLuint snowTextureID = glGetUniformLocation(programID, "myTextureSamplerSNOW");
-    glUniform1i(snowTextureID, 2);
-
-    glActiveTexture(GL_TEXTURE3);
-    GLuint heightmapTexture = loadTexture("heightmap-1024x1024.png");
-    glBindTexture(GL_TEXTURE_2D, heightmapTexture);
-    GLuint heightmapID = glGetUniformLocation(programID, "heightmap");
-    glUniform1i(heightmapID, 3);
-
-    GLuint heightScaleID = glGetUniformLocation(programID,"heightScale");
-    glUniform1f(heightScaleID,1.0f);
-
     std::vector<glm::vec3> plan;
     std::vector<glm::vec2> uvs;
     std::vector<unsigned short> indices_plan;
 
-    // int sommets = 16;
-    float taille = 10.0f;
-    float m = taille / 2.0f;
-    float pas = taille / (float)sommets;
-
-    for (int i = 0; i <= sommets; i++) {
-        for (int j = 0; j <= sommets; j++) {
-            float x = -m + j * pas;
-            float z = -m + i * pas;
-
-            plan.emplace_back(glm::vec3(x,0.0f, z));
-
-            float u = (float)j / (float)(sommets - 1);
-            float v = (float)i / (float)(sommets - 1);
-
-            uvs.emplace_back(glm::vec2(u, v));
+    { // Initialisation du plan
+        float taille = 10.0f;
+        float m = taille / 2.0f;
+        float pas = taille / (float)sommets;
+    
+        for (int i = 0; i <= sommets; i++) {
+            for (int j = 0; j <= sommets; j++) {
+                float x = -m + j * pas;
+                float z = -m + i * pas;
+    
+                plan.emplace_back(glm::vec3(x,0.0f, z));
+    
+                float u = (float)j / (float)(sommets - 1);
+                float v = (float)i / (float)(sommets - 1);
+    
+                uvs.emplace_back(glm::vec2(u, v));
+            }
+        }
+    
+        for (int i = 0; i < sommets-1; i++) {
+            for (int j = 0; j < sommets-1; j++) {
+                int topleft = i * (sommets + 1) + j;
+                int topright = topleft + 1;
+                int bottomleft = (i + 1) * (sommets + 1) + j;
+                int bottomright = bottomleft + 1;
+    
+                indices_plan.push_back(topleft);
+                indices_plan.push_back(bottomleft);
+                indices_plan.push_back(topright);
+    
+                indices_plan.push_back(topright);
+                indices_plan.push_back(bottomleft);
+                indices_plan.push_back(bottomright);
+            }
         }
     }
-
-    for (int i = 0; i < sommets-1; i++) {
-        for (int j = 0; j < sommets-1; j++) {
-            int topleft = i * (sommets + 1) + j;
-            int topright = topleft + 1;
-            int bottomleft = (i + 1) * (sommets + 1) + j;
-            int bottomright = bottomleft + 1;
-
-            indices_plan.push_back(topleft);
-            indices_plan.push_back(bottomleft);
-            indices_plan.push_back(topright);
-
-            indices_plan.push_back(topright);
-            indices_plan.push_back(bottomleft);
-            indices_plan.push_back(bottomright);
-        }
-    }
-
+    
     GLuint vertexbuffer_plan,uvbuffer,elementbuffer_plan;
     
     glGenBuffers(1, &vertexbuffer_plan);
@@ -286,7 +290,6 @@ int main( void )
     int nbFrames = 0;
 
     do{
-
         // Measure speed
         // per-frame time logic
         // --------------------
@@ -297,10 +300,14 @@ int main( void )
         // input
         // -----
         processInput(window);
+
         if (scaleT) {
-            // std::cout << "Scaling..." << std::endl;
             scaleTerrain(plan,uvs,indices_plan,vertexbuffer_plan,uvbuffer,elementbuffer_plan,sommets);
             scaleT = false;
+        }
+
+        if (orbital) {
+            angle += rotation_speed * deltaTime ;
         }
 
         // Clear the screen
@@ -312,11 +319,17 @@ int main( void )
 
         /*****************TODO***********************/
         // Model matrix : an identity matrix (model will be at the origin) then change
-        glm::mat4 ModelMatrix = glm::mat4(1.0f);
+        glm::mat4 ModelMatrix;
+        if(orbital){
+            ModelMatrix = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
+            
+        }else{
+            ModelMatrix = glm::mat4(1.0f);
+        }
         // View matrix : camera/view transformation lookat() utiliser camera_position camera_target camera_up
         glm::mat4 ViewMatrix = glm::lookAt(camera_position,camera_position+camera_target,camera_up);
         // Projection matrix : 45 Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
-        glm::mat4 ProjectionMatrix = glm::perspective(glm::radians(45.0f),(float)SCR_WIDTH / (float)SCR_HEIGHT,0.1f,100.0f);
+        glm::mat4 ProjectionMatrix = glm::perspective(glm::radians(angle_perspective),(float)SCR_WIDTH / (float)SCR_HEIGHT,0.1f,100.0f);
         // Send our transformation to the currently bound shader,
         // in the "Model View Projection" to the shader uniforms
         MVP = ProjectionMatrix*ViewMatrix*ModelMatrix;
@@ -361,38 +374,65 @@ int main( void )
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window)
-{
+void processInput(GLFWwindow *window){
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    //Camera zoom in and out
-    float cameraSpeed = 2.5 * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
-        camera_position += cameraSpeed * camera_target;
-    if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
-        camera_position -= cameraSpeed * camera_target;
+    if(!orbital){
+        float cameraSpeed = 2.5 * deltaTime;
+        if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
+            camera_position += cameraSpeed * camera_target;
+        if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
+            camera_position -= cameraSpeed * camera_target;
 
-    //TODO add translations
-    if (glfwGetKey(window,GLFW_KEY_A) == GLFW_PRESS)
-        camera_position -= glm::normalize(glm::cross(camera_target,camera_up))*cameraSpeed;
-    if (glfwGetKey(window,GLFW_KEY_W) == GLFW_PRESS)
-        camera_position -= cameraSpeed * camera_up;
-    if (glfwGetKey(window,GLFW_KEY_D) == GLFW_PRESS)
-        camera_position += glm::normalize(glm::cross(camera_target,camera_up))*cameraSpeed;
-    if (glfwGetKey(window,GLFW_KEY_S) == GLFW_PRESS)
-        camera_position += cameraSpeed * camera_up;
-
+        if (glfwGetKey(window,GLFW_KEY_A) == GLFW_PRESS)
+            camera_position -= glm::normalize(glm::cross(camera_target,camera_up))*cameraSpeed;
+        if (glfwGetKey(window,GLFW_KEY_W) == GLFW_PRESS)
+            camera_position -= cameraSpeed * camera_up;
+        if (glfwGetKey(window,GLFW_KEY_D) == GLFW_PRESS)
+            camera_position += glm::normalize(glm::cross(camera_target,camera_up))*cameraSpeed;
+        if (glfwGetKey(window,GLFW_KEY_S) == GLFW_PRESS)
+            camera_position += cameraSpeed * camera_up;
+    }else {
+        camera_position = orbital_camera_position;
+        camera_target = glm::normalize(camera_target - orbital_camera_position);
+    }
 
     if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS && sommets <= MAX_SOMMETS) {
-        // std::cout << "Dimension ++ | sommets = " << sommets << std::endl;
         sommets += 2;
         scaleT = true;
     }
     if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS && sommets > MIN_SOMMETS) {
-        // std::cout << "Dimension -- | sommets = " << sommets << std::endl;
         sommets -= 2;
         scaleT = true;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS){
+        angle_perspective += 1.0f;
+        std::cout << "angle = " << angle_perspective << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS){
+        angle_perspective -= 1.0f;
+        std::cout << "angle = " << angle_perspective << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS){
+        rotation_speed += 0.1f;
+        std::cout << "speed = " << rotation_speed << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS){
+        rotation_speed -= 0.1f;
+        std::cout << "speed = " << rotation_speed << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS){
+        orbital = !orbital;
+        if (orbital) {
+            camera_position = orbital_camera_position;
+            camera_target = glm::normalize(camera_target - orbital_camera_position);
+        }
+        if (!orbital){
+            camera_position   = glm::vec3(0.0f, 1.0f, 7.0f);
+            camera_target = glm::vec3(0.0f, 0.0f, -1.0f);
+        }
     }
 }
 

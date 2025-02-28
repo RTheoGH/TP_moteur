@@ -327,7 +327,6 @@ int main( void ){
         glm::mat4 ModelMatrix;
         if(orbital){
             ModelMatrix = glm::rotate(glm::mat4(1.0f),angle,glm::vec3(0.0f,1.0f,0.0f));
-            
         }else{
             ModelMatrix = glm::mat4(1.0f);
         }

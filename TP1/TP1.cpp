@@ -206,19 +206,19 @@ int main( void ){
         glActiveTexture(GL_TEXTURE0);
         GLuint grassTexture = loadTexture("grass.png");
         glBindTexture(GL_TEXTURE_2D,grassTexture);
-        GLuint grassTextureID = glGetUniformLocation(programID,"myTextureSamplerGRASS");
+        GLuint grassTextureID = glGetUniformLocation(programID,"GRASS");
         glUniform1i(grassTextureID, 0);
         
         glActiveTexture(GL_TEXTURE1);
         GLuint rockTexture = loadTexture("rock.png");
         glBindTexture(GL_TEXTURE_2D,rockTexture);
-        GLuint rockTextureID = glGetUniformLocation(programID,"myTextureSamplerROCK");
+        GLuint rockTextureID = glGetUniformLocation(programID,"ROCK");
         glUniform1i(rockTextureID, 1);
 
         glActiveTexture(GL_TEXTURE2);
         GLuint snowTexture = loadTexture("snowrocks.png");
         glBindTexture(GL_TEXTURE_2D,snowTexture);
-        GLuint snowTextureID = glGetUniformLocation(programID,"myTextureSamplerSNOW");
+        GLuint snowTextureID = glGetUniformLocation(programID,"SNOW");
         glUniform1i(snowTextureID, 2);
 
         glActiveTexture(GL_TEXTURE3);
@@ -393,11 +393,11 @@ void processInput(GLFWwindow *window){
         if(glfwGetKey(window,GLFW_KEY_A) == GLFW_PRESS)
             camera_position -= glm::normalize(glm::cross(camera_target,camera_up))*cameraSpeed;
         if(glfwGetKey(window,GLFW_KEY_W) == GLFW_PRESS)
-            camera_position -= cameraSpeed * camera_up;
+            camera_position += cameraSpeed * camera_up;
         if(glfwGetKey(window,GLFW_KEY_D) == GLFW_PRESS)
             camera_position += glm::normalize(glm::cross(camera_target,camera_up))*cameraSpeed;
         if(glfwGetKey(window,GLFW_KEY_S) == GLFW_PRESS)
-            camera_position += cameraSpeed * camera_up;
+            camera_position -= cameraSpeed * camera_up;
     }else{
         camera_position = orbital_camera_position;
         camera_target = glm::normalize(camera_target - orbital_camera_position);

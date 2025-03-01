@@ -1,10 +1,19 @@
-# TP_moteur
+# HAI819I - Moteurs de jeux - TP
 
 ### Reynier Théo
 
 ---
+### Installation
+```bash
+mkdir build
+cd build
+cmake ..
+make -j
+./launch-TP1.sh
+```
+---
 
-### Implémentés :
+### Implémentés
 - Affichage d'un plan
 - Application d'une texture
 - Hauteur aléatoire

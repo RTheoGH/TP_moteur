@@ -191,7 +191,7 @@ int main( void ){
     // Create and compile our GLSL program from the shaders
     GLuint programID = LoadShaders( "vertex_shader.glsl", "fragment_shader.glsl" );
 
-    /*****************TODO***********************/
+    /****************************************/
     // Get a handle for our "Model View Projection" matrices uniforms
     GLuint MatrixID = glGetUniformLocation(programID,"MVP");
     glm::mat4 MVP;
@@ -417,26 +417,18 @@ void processInput(GLFWwindow *window){
     /****************************************/
     // Angle de perspective
 
-    if(glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS){
+    if(glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
         angle_perspective += 1.0f;
-        // std::cout << "angle = " << angle_perspective << std::endl;
-    }
-    if(glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS){
+    if(glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS)
         angle_perspective -= 1.0f;
-        // std::cout << "angle = " << angle_perspective << std::endl;
-    }
 
     /****************************************/
     // Vitesse de rotation (mode orbital)
 
-    if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS){
+    if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
         rotation_speed += 0.1f;
-        // std::cout << "speed = " << rotation_speed << std::endl;
-    }
-    if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS){
+    if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
         rotation_speed -= 0.1f;
-        // std::cout << "speed = " << rotation_speed << std::endl;
-    }
 
     /****************************************/
     // Position de la caméra selon le mode (manuel ou orbital)

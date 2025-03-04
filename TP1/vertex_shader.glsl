@@ -11,10 +11,11 @@ uniform float heightScale;
 
 // Values that stay constant for the whole mesh.
 out vec2 UV;
+out float altitude;
 
 void main(){
         // float altitude = sin(vertices_position_modelspace.x) * sin(vertices_position_modelspace.z);
-        float altitude = texture(heightmap,vertexUV).r * heightScale;
+        altitude = texture(heightmap,vertexUV).r * heightScale;
         vec3 relief = vec3(vertices_position_modelspace.x,altitude,vertices_position_modelspace.z);
 
         gl_Position = MVP * vec4(relief,1);

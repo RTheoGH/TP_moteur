@@ -7,18 +7,16 @@ out vec3 color;
 uniform sampler2D GRASS;
 uniform sampler2D ROCK;
 uniform sampler2D SNOW;
-uniform sampler2D heightmap;
+
+in float altitude;
 
 void main(){
-
-        float altitude = texture(heightmap,UV).r * 10.0;
-
         vec3 grassColor = texture(GRASS,UV).rgb;
         vec3 rockColor = texture(ROCK,UV).rgb;
         vec3 snowColor = texture(SNOW,UV).rgb;
 
-        vec3 blendedColor = mix(grassColor,rockColor,smoothstep(1.5,2.5,altitude));
-        blendedColor = mix(blendedColor,snowColor,smoothstep(5.0,6.0,altitude));
+        vec3 blendedColor = mix(grassColor,rockColor,smoothstep(0.15,0.25,altitude));
+        blendedColor = mix(blendedColor,snowColor,smoothstep(0.3,0.5,altitude));
 
         color = blendedColor;
 
